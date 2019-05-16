@@ -1,0 +1,21 @@
+{
+  "name": "parser-server",
+  "version": "1.0.0",
+  "description": "Parser API with GraphQL",
+  "main": "index.js",
+  "repository": "https://github.com/ppark2ya/parser-server.git",
+  "author": "parkjongtae <vigabhan1231@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-stage-3": "^6.24.1",
+    "graphql-yoga": "^1.17.4",
+    "node-fetch": "^2.6.0",
+    "nodemon": "^1.19.0"
+  },
+  "scripts": {
+    "start": "nodemon --exec babel-node index.js"
+  }
+}
