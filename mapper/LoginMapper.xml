@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="LoginMapper">
+    <select id="loginProc">
+        SELECT 
+            count(*)
+        FROM
+            TB_USER
+        WHERE
+            UID=#{uid} AND PASSWD=#{pw}
+    </select>
+
+    <select id="getUserInfo">
+        SELECT 
+            UID as "uid",
+            PASSWD as "pw",
+            AUTH as "auth",
+            TEL_NUM as "telNum",
+            NAME as "name",
+            EMAIL as "email",
+            USE_CL as "useCl"
+        FROM
+            TB_USER
+        WHERE
+            UID=#{uid}
+    </select>
+
+    <update id="updateUser">
+        UPDATE TB_USER
+        SET PASSWD = #{pw}
+        WHERE UID = #{uid}
+    </update>
+
+    <insert id="signUp">
+        INSERT INTO TB_USER (UID, PASSWD, AUTH, TEL_NUM, NAME, EMAIL, USE_CL, REG_DT, REG_TM, UPD_DT, UPD_TM)
+        VALUES(#{uid}, #{pw}, '32', #{tel}, #{name}, #{email}, '1', DATE_FORMAT(NOW(), '%Y%m%d'), DATE_FORMAT(NOW(), '%H%i%s'), DATE_FORMAT(NOW(), '%Y%m%d'), DATE_FORMAT(NOW(), '%H%i%s'))
+    </insert>
+
+</mapper>

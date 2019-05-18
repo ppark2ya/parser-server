@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="MainMapper">
+
+    <select id="getUserAuthentication">
+        SELECT
+            u.UID as "uid",
+            c.DESC1 as "description"
+        FROM
+            TB_USER u
+        INNER JOIN 
+            TB_CODE c ON u.AUTH = c.CODE_CL
+        WHERE
+            u.USE_CL = '1' AND u.UID=#{uid} AND u.AUTH=#{auth}
+    </select>
+
+    <select id="getHomeDashboard">
+        SELECT *
+        FROM(
+            SELECT *
+            FROM (
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    SUM(A.SUCCESS_FLG) as cnt,
+                    1 as week
+                FROM TB_SMS_SEND_HISTORY A
+                JOIN TB_LISTENING_SERVERS B USING(SERVICE_CD)
+                WHERE A.SEND_DT BETWEEN #{date} AND #{date}+7 AND B.USE_CL = '1'
+                GROUP BY SERVICE_CD
+
+                UNION ALL 
+
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    0 as cnt,
+                    1 as week
+                FROM TB_LISTENING_SERVERS
+                WHERE USE_CL = '1'
+            ) TBL
+            GROUP BY serviceCd
+
+            UNION ALL
+
+            SELECT *
+            FROM (
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    SUM(A.SUCCESS_FLG) as cnt,
+                    2 as week
+                FROM TB_SMS_SEND_HISTORY A
+                JOIN TB_LISTENING_SERVERS B USING(SERVICE_CD)
+                WHERE A.SEND_DT BETWEEN #{date}+8 AND #{date}+15 AND B.USE_CL = '1'
+                GROUP BY SERVICE_CD
+
+                UNION ALL 
+
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    0 as cnt,
+                    2 as week
+                FROM TB_LISTENING_SERVERS
+                WHERE USE_CL = '1'
+            ) TBL
+            GROUP BY serviceCd
+
+            UNION ALL
+
+            SELECT *
+            FROM (
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    SUM(A.SUCCESS_FLG) as cnt,
+                    3 as week
+                FROM TB_SMS_SEND_HISTORY A
+                JOIN TB_LISTENING_SERVERS B USING(SERVICE_CD)
+                WHERE A.SEND_DT BETWEEN #{date}+16 AND #{date}+23 AND B.USE_CL = '1'
+                GROUP BY SERVICE_CD
+
+                UNION ALL 
+
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    0 as cnt,
+                    3 as week
+                FROM TB_LISTENING_SERVERS
+                WHERE USE_CL = '1'
+            ) TBL
+            GROUP BY serviceCd
+
+            UNION ALL
+
+            SELECT *
+            FROM (
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    SUM(A.SUCCESS_FLG) as cnt,
+                    4 as week
+                FROM TB_SMS_SEND_HISTORY A
+                JOIN TB_LISTENING_SERVERS B USING(SERVICE_CD)
+                WHERE A.SEND_DT BETWEEN #{date}+24 AND #{date}+30 AND B.USE_CL = '1'
+                GROUP BY SERVICE_CD
+
+                UNION ALL 
+
+                SELECT 
+                    SERVICE_CD as serviceCd,
+                    0 as cnt,
+                    4 as week
+                FROM TB_LISTENING_SERVERS
+                WHERE USE_CL = '1'
+            ) TBL
+            GROUP BY serviceCd
+        ) RSLT
+        WHERE serviceCd IN (#{ZABBIX}, #{POSTMAN}, #{SEFILCARE}, #{CHECK_SERVER})
+    </select>
+
+    <select id="getCheckServerGraph">
+        SELECT 
+            CASE WHEN (LOG_TYPE != 401)
+                THEN 'other' 
+                ELSE LOG_TYPE 
+            END as logType,
+            cnt
+        FROM(
+            SELECT TRIM(REGEXP_REPLACE(LOG_TYPE, '[a-zA-Z]', '')) as LOG_TYPE, COUNT(*) as cnt
+            FROM TB_LOG_HISTORY L
+            JOIN TB_LISTENING_SERVERS S USING(SERVICE_CD)
+            WHERE S.USE_CL='1' AND L.SERVICE_CD='03' AND L.LOG_PRIORITY = 'CRITICAL'
+            GROUP BY LOG_TYPE
+        ) RSLT
+    </select>
+
+    <select id="getLogStats">
+        SELECT 
+            *,
+            ROW_NUMBER() OVER() as no,
+            0 as open
+        FROM 
+            (SELECT 
+                SERVICE_CD as serviceCd,
+                CASE
+                    WHEN SERVICE_CD = '00' THEN 'Zabbix'
+                    WHEN SERVICE_CD = '01' THEN 'Postman'
+                    WHEN SERVICE_CD = '02' THEN 'Sefilcare'
+                    WHEN SERVICE_CD = '03' THEN 'CheckServer'
+                END as serviceNm,
+                LOG_SEQ as logSeq,
+                LOG_PRIORITY as status,
+                LOG_TYPE as logType,
+                DATE_FORMAT(CONCAT(LOG_DT, LOG_TM), '%Y-%m-%d %H:%i:%s') as date, 
+                TITLE as title,
+                CONTENT as content
+            FROM TB_LOG_HISTORY
+            JOIN TB_LISTENING_SERVERS USING (SERVICE_CD)
+            WHERE 
+                USE_CL = '1'
+            <if test="serviceCd != null and serviceCd != ''">
+                AND SERVICE_CD=#{serviceCd}
+            </if>
+            <if test="status != null and status != ''">
+                AND LOG_PRIORITY=#{status} 
+            </if>
+            <if test="startDt != null and startDt != ''">
+                AND LOG_DT BETWEEN #{startDt} 
+            </if>
+            <if test="endDt != null and endDt != ''">
+                AND #{endDt}
+            </if>
+            ORDER BY date desc, serviceCd asc
+        ) RSLT
+        WHERE serviceCd IN (#{ZABBIX}, #{POSTMAN}, #{SEFILCARE}, #{CHECK_SERVER})
+    </select>
+
+    <update id="authUpdate">
+        UPDATE TB_USER
+        SET AUTH = ( SELECT CODE_CL FROM TB_CODE WHERE DESC1 = #{authStr} )
+        WHERE UID = #{uid}
+    </update>
+
+    <update id="deleteEmailAddr">  
+        UPDATE TB_USER
+        SET EMAIL = ''
+        WHERE UID = #{uid}
+    </update>
+
+    <update id="addEmailAddr">
+        UPDATE TB_USER
+        SET EMAIL = #{email}
+        WHERE UID = #{uid}
+    </update>
+
+    <update id="deleteTelNum">
+        UPDATE TB_USER
+        SET TEL_NUM = ''
+        WHERE UID = #{uid}
+    </update>
+
+    <update id="addTelNum">
+        UPDATE TB_USER
+        SET TEL_NUM = #{tel}
+        WHERE UID = #{uid}
+    </update>
+
+    <select id="getCriticalServerCount"  parameterType="string">
+        SELECT 
+            A.LOG_DT AS "log_dt",
+            (SELECT DESC1 FROM TB_CODE WHERE CODE_CL = A.SERVICE_CD) AS "logType", 
+            A.CNT AS "cnt"
+        FROM(
+            SELECT LOG_DT, SERVICE_CD, COUNT(1) AS CNT
+              FROM TB_LOG_HISTORY 
+             WHERE 1=1 
+               AND LOG_PRIORITY = 'CRITICAL'
+               AND LOG_DT = #{date}
+            GROUP BY LOG_DT, SERVICE_CD
+            UNION ALL
+            SELECT #{date} AS LOG_DT, CODE_CL AS SERVICE_CD, 0 AS CNT
+              FROM TB_CODE  
+             WHERE 1=1
+               AND CODE_NM = 'SERVICE_CD'
+            GROUP BY SERVICE_CD
+        ) A
+        GROUP BY A.SERVICE_CD
+    </select>
+
+    <select id="getBeforeThreeDate" resultType="string">
+        SELECT (CURDATE()-INTERVAL 3 DAY) AS "date"
+        UNION ALL
+        SELECT (CURDATE()-INTERVAL 2 DAY) AS "date"
+        UNION ALL
+        SELECT (CURDATE()-INTERVAL 1 DAY) AS "date"
+        UNION ALL
+        SELECT (CURDATE()-INTERVAL 0 DAY) AS "date"
+    </select>
+
+    <select id="SefilCareGraph">
+        SELECT 
+            tb.date as 'day',
+            COUNT as "count" 
+        FROM (
+            SELECT 
+                (CURDATE()-INTERVAL 6 DAY) AS "date" ,
+                COUNT(*) as "count" 
+            FROM 
+                TB_LOG_HISTORY  
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -6 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 5 DAY) AS "date" ,
+                COUNT(*) as "count"
+            FROM 
+                TB_LOG_HISTORY  
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -5 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 4 DAY) AS "date" ,
+                COUNT(*) as "count"
+            FROM 
+                TB_LOG_HISTORY
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -4 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 3 DAY) AS "date" , 
+                COUNT(*) as "count" 
+            FROM 
+                TB_LOG_HISTORY  
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -3 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 2 DAY) AS "date" ,
+                COUNT(*) as "count"
+            FROM 
+                TB_LOG_HISTORY  
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -2 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 1 DAY) AS "date" ,
+                COUNT(*) as "count"
+            FROM 
+                TB_LOG_HISTORY  
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -1 DAY),'%Y-%m-%d')
+
+            UNION ALL 
+
+            SELECT 
+                (CURDATE()-INTERVAL 0 DAY) AS "date" ,
+                COUNT(*) as "count"
+            FROM 
+                TB_LOG_HISTORY
+            WHERE 
+                SERVICE_CD = '02' AND DATE_FORMAT(LOG_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL  0 DAY),'%Y-%m-%d')
+        ) tb
+    </select>
+
+    <select id="zabbixGraph">
+        SELECT 
+            a.UPD_DT as day, 
+            a.status_nm,
+            a.cnt as count 
+        FROM ( 
+            SELECT 
+                DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+            FROM 
+                TB_ERROR_STATUS  
+            WHERE 
+                1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -0 DAY),'%Y-%m-%d')
+            GROUP BY 
+                UPD_DT, STATUS_NM
+
+            UNION ALL
+
+            SELECT 
+                DATE_FORMAT((CURDATE()-INTERVAL 0 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+            FROM 
+                TB_ERROR_STATUS
+            WHERE 
+                1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+            GROUP BY 
+                STATUS_NM
+            ) a 
+            GROUP BY 
+                a.status_nm
+
+            UNION ALL 
+
+            SELECT 
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count 
+            FROM ( 
+                SELECT 
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -1 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+
+                SELECT 
+                    DATE_FORMAT((CURDATE()-INTERVAL 1 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM 
+                    TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY 
+                    STATUS_NM
+            ) a 
+            GROUP BY a.status_nm
+
+            UNION ALL 
+
+            SELECT 
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count 
+            FROM ( 
+                SELECT
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM 
+                    TB_ERROR_STATUS  
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -2 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+
+                SELECT 
+                    DATE_FORMAT((CURDATE()-INTERVAL 2 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY 
+                    STATUS_NM
+                ) a 
+            GROUP BY a.status_nm
+
+            UNION ALL 
+
+            SELECT 
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count 
+            FROM ( 
+                SELECT 
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM
+                    TB_ERROR_STATUS  
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -3 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+
+                SELECT 
+                    DATE_FORMAT((CURDATE()-INTERVAL 3 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY 
+                    STATUS_NM
+            ) a 
+            GROUP BY 
+                a.status_nm
+            UNION ALL 
+            SELECT
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count 
+            FROM ( 
+                SELECT
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM TB_ERROR_STATUS  
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -4 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+                SELECT
+                    DATE_FORMAT((CURDATE()-INTERVAL 4 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM 
+                    TB_ERROR_STATUS
+                WHERE
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY 
+                    STATUS_NM
+            ) a 
+            GROUP BY 
+                a.status_nm
+
+            UNION ALL 
+
+            SELECT 
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count 
+            FROM ( 
+                SELECT 
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM 
+                    TB_ERROR_STATUS  
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -5 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+
+                SELECT 
+                    DATE_FORMAT((CURDATE()-INTERVAL 5 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM 
+                    TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY 
+                    STATUS_NM
+            ) a 
+            GROUP BY 
+                a.status_nm
+
+            UNION ALL 
+
+            SELECT
+                a.UPD_DT as day,
+                a.status_nm,
+                a.cnt as count
+            FROM ( 
+                SELECT 
+                    DATE_FORMAT(UPD_DT,'%Y-%m-%d') AS UPD_DT, STATUS_NM, COUNT(1) AS CNT
+                FROM 
+                    TB_ERROR_STATUS  
+                WHERE 
+                    1=1 AND DATE_FORMAT(UPD_DT,'%Y-%m-%d') = DATE_FORMAT(DATE_ADD(now(), INTERVAL -6 DAY),'%Y-%m-%d')
+                GROUP BY 
+                    UPD_DT, STATUS_NM
+
+                UNION ALL
+
+                SELECT 
+                    DATE_FORMAT((CURDATE()-INTERVAL 6 DAY),'%Y-%m-%d') AS UPD_DT, STATUS_NM AS STATUS_NM, 0 AS CNT
+                FROM 
+                    TB_ERROR_STATUS
+                WHERE 
+                    1=1 AND UPD_DT > DATE_ADD(now(),INTERVAL -7 day)
+                GROUP BY STATUS_NM
+            ) a 
+            GROUP BY a.status_nm order by status_nm desc, day asc
+    </select>
+
+    <select id="zabbixGraphStaus_nm">
+        SELECT STATUS_NM 
+        FROM TB_ERROR_STATUS 
+        WHERE UPD_DT > DATE_ADD(now(),INTERVAL -7 day) 
+        GROUP BY STATUS_NM order by status_nm desc
+    </select>
+
+    <select id="getKeywordList">
+        SELECT 
+            KEYWORD as "keyword", 
+            SERVICE_CD as "serviceCd",
+            USE_CL as "useCl"
+        FROM 
+            TB_KEYWORD
+        WHERE 
+            EXCEPTION_ATTR LIKE '%CRITICAL%' AND SERVICE_CD IN (#{ZABBIX}, #{POSTMAN}, #{SEFILCARE}, #{CHECK_SERVER})
+        ORDER BY
+            serviceCd, useCl
+    </select>
+
+    <update id="toggleUsage">
+        UPDATE TB_KEYWORD
+        SET USE_CL = #{useCl}
+        WHERE KEYWORD = #{keyword} AND SERVICE_CD = #{serviceCd}
+    </update>
+
+    <select id="getKeywordInfo">
+        SELECT
+            KEYWORD as "keyword", 
+            SERVICE_CD as "serviceCd",
+            USE_CL as "useCl"
+        FROM 
+            TB_KEYWORD
+        WHERE 
+            SERVICE_CD = #{serviceCd} AND EXCEPTION_ATTR LIKE '%CRITICAL%' 
+    </select>
+</mapper>

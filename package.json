@@ -2,7 +2,7 @@
   "name": "parser-server",
   "version": "1.0.0",
   "description": "Parser API with GraphQL",
-  "main": "index.js",
+  "main": "server.js",
   "repository": "https://github.com/ppark2ya/parser-server.git",
   "author": "parkjongtae <vigabhan1231@gmail.com>",
   "license": "MIT",
@@ -11,11 +11,25 @@
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.7.0",
     "babel-preset-stage-3": "^6.24.1",
+    "class-validator": "^0.9.1",
+    "cors": "^2.8.5",
+    "dotenv": "^8.0.0",
+    "gql-merge": "0.0.6",
+    "graphql-tools": "^4.0.4",
     "graphql-yoga": "^1.17.4",
+    "jsonwebtoken": "^8.5.1",
+    "merge-graphql-schemas": "^1.5.8",
+    "morgan": "^1.9.1",
+    "mybatis-mapper": "^0.6.3",
+    "mysql2": "^1.6.5",
     "node-fetch": "^2.6.0",
-    "nodemon": "^1.19.0"
+    "nodemon": "^1.19.0",
+    "passport": "^0.4.0",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0"
   },
   "scripts": {
-    "start": "nodemon --exec babel-node index.js"
+    "start": "nodemon --exec babel-node src/server.js",
+    "debug": "nodemon --exec babel-node --inspect src/server.js"
   }
 }
