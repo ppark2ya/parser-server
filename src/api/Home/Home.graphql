@@ -1,0 +1,15 @@
+type HomeChartData {
+  ZABBIX: Int
+  POSTMAN: Int
+  SEFILCARE: Int
+  CHECKSERVER: Int
+}
+
+type Dashboard {
+  week: String!
+  data: HomeChartData!
+}
+
+type Query {
+  dashboard(uid: String!, auth: String!): [Dashboard]!
+}

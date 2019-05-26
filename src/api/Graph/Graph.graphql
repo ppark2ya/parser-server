@@ -1,0 +1,50 @@
+type SynthesisChartData {
+  label: String!
+  data: [Int]!
+  backgroundColor: String!
+}
+
+type Synthesis {
+  labels: [String]!
+  chartData: [SynthesisChartData]!
+}
+
+type CheckServerChartData {
+  HTTPCode: String!
+  cnt: Int!
+}
+
+type CheckServer {
+  chartData: [CheckServerChartData]!
+}
+
+type SefilcareChartData {
+  day: String!
+  count: Int!
+}
+
+type Sefilcare {
+  chartData: [SefilcareChartData]!
+}
+
+type ZabbixChartData {
+  day: String
+  statusNm: String
+  count: Int
+}
+
+type ErrorStatus {
+  statusNm: String!
+}
+
+type Zabbix {
+  chartData: [ZabbixChartData]!
+  statusNm: [ErrorStatus]!
+}
+
+type Query {
+  synthesisGraph(uid: String!, auth: String!): Synthesis!
+  checkServerGraph(uid: String!, auth: String!): CheckServer!
+  sefilcareGraph(uid: String!, auth: String!): Sefilcare!
+  zabbixGraph(uid: String!, auth: String!): Zabbix!
+}
