@@ -30,6 +30,8 @@ const server = new GraphQLServer({
 server.express.use(cors());
 server.express.use(logger("dev"));
 const handleAppStart = () =>
-  console.log("Graphql Server running on http://localhost:4000/playground");
+  console.log(
+    `Graphql Server running on http://localhost:${PORT}${PLAYGROUND_ENDPOINT}`
+  );
 
 server.start(appOptions, handleAppStart);
