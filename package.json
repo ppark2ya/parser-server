@@ -11,7 +11,7 @@
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.7.0",
     "babel-preset-stage-3": "^6.24.1",
-    "class-validator": "^0.9.1",
+    "class-validator": "^0.14.0",
     "cors": "^2.8.5",
     "dotenv": "^8.0.0",
     "gql-merge": "0.0.6",
